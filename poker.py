@@ -20,13 +20,15 @@ class Player:
 	def printPlayer(self): 
 		print("playerName:", self.name)
 		print("Chips:", self.chips)
-		print("Human?:", self.human)
+		print("Human:", self.human)
+		print()
 	
 	def showHand(self): 
 		self.hand[0].printCard()
 		self.hand[1].printCard()
 		print()
-		
+	
+	#UNTESTED	
 	def bet(self, amount):
 		if self.chips >= amount & amount > 0: 
 			self.chips = self.chips - amount
@@ -81,12 +83,14 @@ class Seat:
 		if self.bb: 
 			print("BB")
 		elif self.sb: 
-			print("SB")
+			if self.btn: 
+				print("SB + BTN")
+			else: 
+				print("SB")	
 		elif self.btn: 
 			print("BTN")
 		
-		if self.occupied: 
-			self.player.printPlayer()
+		
 			
 class Table:
 	def __init__(self, players, blinds): 
@@ -106,7 +110,14 @@ class Table:
 			if self.maxSize > self.currentSize: 
 				self.addPlayer(players[x])
 		
-
+	def printTable(self): 
+		for x in range(self.currentSize):
+			self.seats[x].printSeat()
+			
+		print("Blinds:", self.sb, "/", self.bb)
+		print("Current size:", self.currentSize, "Max Size:", self.maxSize)
+		print()
+		
 	def addPlayer(self, player):
 		#will need more complicated checks in future to ensure players can't skip bb
 		for x in range(self.maxSize): 
@@ -120,26 +131,64 @@ class Table:
 	def removePlayer(self, playerName): 
 		for x in range(self.currentSize): 
 			if self.seats[x].player.name == playerName: 
-				#can probably delete player property rather than clearing it
-				self.seats[x].player.name = ""
-				self.seats[x].player.chips = 0
-				self.seats[x].player.hand = (0,0)
+				delattr(self.seats[x], player)
 				self.seats[x].occupied = false
-	
-	def printTable(self): 
-		for x in range(self.currentSize):
-			self.seats[x].printSeat()
+				return True
+		print("Could not find a player named ", playerName)
+		return False
+		
+	def determineBlinds(self): 
+		if self.currentSize == 1: 
+			print("Need more players to play! Try adding a CPU")
 			
-		print("Blinds:", self.sb, "/", self.bb)
-		print("Current size:", self.currentSize, "Max Size:", self.maxSize)
+		elif self.currentSize == 2: 
+			self.seats[0].sb = True
+			self.seats[0].btn = True
+			self.seats[1].bb = True
+			
+		elif self.currentSize > 2: 
+			self.seats[0].btn = True
+			self.seats[1].sb = True
+			self.seats[2].bb = True
+
+	def rotateBigBlind(self): 
+		for x in range(len(self.seats)): 
+			if self.seats[x].bb == True: 
+				self.seats[x].printSeat()
+				self.seats[x].bb = False
+				self.seats[(x+1) % len(self.seats)].bb = True
+				break
+	
+	def rotateSmallBlind(self): 
+		for x in range(len(self.seats)): 
+			if self.seats[x].sb: 
+				self.seats[x].sb = False
+				self.seats[(x+1) % len(self.seats)].sb = True
+				break
+				
+	def rotateButton(self): 
+		for x in range(len(self.seats)): 
+			if self.seats[x].btn: 
+				self.seats[x].btn = False
+				self.seats[(x+1) % len(self.seats)].btn = True
+				break
+				
+	def rotateBlinds(self): 
+		print()
+		self.rotateBigBlind()
+		self.rotateSmallBlind()
+		self.rotateButton()
 
 
 def setupGame(): 
-	#create table and players
-	humans = input("Please enter how many human players\n")
-	cpus = input("Please enter how many computer players\n")
+	#create table and players from user input
+	#humans = input("Please enter how many human players\n")
+	#cpus = input("Please enter how many computer players\n")
+	#chips = input("Please enter how many starting chips per player\n")
 	
-	chips = input("Please enter how many starting chips per player\n")
+	humans = 1
+	cpus = 3
+	chips = 100
 	
 	players = []
 	for x in range(int(humans)): 
@@ -153,6 +202,7 @@ def setupGame():
 		print("added cpu: ", "cpu"+str(x))
 	
 	table = Table(players, (int(chips)/100, int(chips)/50))
+	table.determineBlinds()
 	#still need to set which seat is bb,sb, and btn
 	return table
 
@@ -165,6 +215,8 @@ def playGame():
 			if table.seats[x].player.human: 
 				table.seats[x].player.showHand()
 	
+	table.rotateBlinds()
+	table.printTable()
 	#wagering can start here
 playGame()
 
